@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CertGen - 批量荣誉证书可定制化生成系统</title>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;background:#f4f1eb;color:#222}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:24px 0;text-align:center;border-bottom:3px solid #b8860b}
+.header h1{font-size:22px;letter-spacing:3px;font-family:"Noto Serif SC",serif}
+.header p{font-size:12px;color:#aaa;margin-top:6px}
+.container{max-width:1100px;margin:20px auto;padding:0 16px}
+.panel{background:#fff;border:1px solid #ddd;border-radius:6px;padding:20px;margin-bottom:16px}
+.panel h2{font-size:15px;color:#1a1a2e;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #b8860b;font-family:"Noto Serif SC",serif}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.col{flex:1;min-width:200px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#555}
+input,textarea,select{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;background:#fafaf7;font-family:inherit}
+textarea{resize:vertical;min-height:100px;line-height:1.8}
+button{padding:8px 20px;border:none;border-radius:4px;font-size:14px;cursor:pointer;transition:all .2s}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2a2a4e}
+.btn-gold{background:#b8860b;color:#fff}.btn-gold:hover{background:#d4a017}
+.btn-success{background:#2e7d32;color:#fff}.btn-success:hover{background:#388e3c}
+button:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:12px;color:#888;margin-top:4px}
+/* Certificate */
+.cert-page{width:700px;height:500px;background:#fff;border:3px double #b8860b;padding:12px;position:relative;font-family:"Noto Serif SC","SimSun",serif;overflow:hidden}
+.cert-inner{border:1px solid #b8860b;height:100%;padding:24px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative}
+.cert-wm{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:.04;z-index:0}
+.cert-wm span{display:inline-block;font-size:12px;color:#1a1a2e;transform:rotate(-30deg);margin:18px 10px;white-space:nowrap;letter-spacing:2px}
+.cert-corner{position:absolute;width:28px;height:28px;border-color:#b8860b;border-style:solid}
+.cert-corner.tl{top:8px;left:8px;border-width:2px 0 0 2px}.cert-corner.tr{top:8px;right:8px;border-width:2px 2px 0 0}
+.cert-corner.bl{bottom:8px;left:8px;border-width:0 0 2px 2px}.cert-corner.br{bottom:8px;right:8px;border-width:0 2px 2px 0}
+.cert-logo{max-height:40px;max-width:280px;object-fit:contain;margin-bottom:2px;z-index:1}
+.cert-org{font-size:16px;color:#1a1a2e;letter-spacing:4px;font-weight:700;margin-bottom:0;z-index:1}
+.cert-sub{font-size:13px;color:#555;letter-spacing:2px;margin-bottom:8px;z-index:1}
+.cert-type{font-size:28px;color:#b8860b;letter-spacing:8px;font-weight:700;margin-bottom:16px;border-bottom:1px solid #b8860b;padding-bottom:4px;z-index:1}
+.cert-body{font-size:14px;color:#333;line-height:2.2;max-width:520px;z-index:1}
+.cert-name-hl{font-size:26px;color:#c41e3a;font-weight:700;border-bottom:2px solid #c41e3a;padding:0 8px 2px;display:inline-block;margin:0 4px}
+.cert-num{position:absolute;top:14px;right:20px;font-size:11px;color:#999;font-family:monospace;z-index:1}
+.cert-footer{position:absolute;bottom:18px;width:calc(100% - 80px);display:flex;justify-content:space-between;font-size:12px;color:#666;z-index:1}
+.cert-hash{position:absolute;bottom:4px;left:30px;right:30px;font-size:7px;color:#bbb;font-family:monospace;text-align:center;letter-spacing:.5px;word-break:break-all;z-index:1}
+/* Roster */
+.roster-page{width:700px;min-height:500px;background:#fff;border:3px double #b8860b;padding:12px;font-family:"Noto Serif SC","SimSun",serif}
+.roster-inner{border:1px solid #b8860b;min-height:476px;padding:30px 36px;position:relative}
+.roster-title{text-align:center;font-size:18px;font-weight:700;color:#1a1a2e;letter-spacing:3px;margin-bottom:4px}
+.roster-sub{text-align:center;font-size:13px;color:#555;margin-bottom:6px;letter-spacing:2px}
+.roster-count{text-align:center;font-size:12px;color:#888;margin-bottom:16px}
+.roster-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 10px;margin-bottom:20px}
+.roster-item{font-size:14px;color:#333;text-align:center;padding:4px 0;border-bottom:1px dotted #ddd}
+.roster-footer{text-align:right;font-size:12px;color:#666;margin-top:16px;padding-top:10px;border-top:1px solid #ddd}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>CertGen - 批量荣誉证书生成系统</h1>
+  <p>高度可定制 · 纯本地运行 · 数据不上传 · 开源免费</p>
+</div>
+<div class="container">
+
+  <!-- Step 1: Template config -->
+  <div class="panel">
+    <h2>① 证书模板配置</h2>
+    <div class="row">
+      <div class="col"><label>颁发机构名称</label><input type="text" id="orgName" placeholder="如：XX大学、XX协会"></div>
+      <div class="col"><label>二级机构 / 部门（可选）</label><input type="text" id="committeeName" placeholder="如：计算机学院、青年委员会"></div>
+      <div class="col"><label>证书类型标题</label><input type="text" id="certTitle" value="荣誉证书" placeholder="如：聘书、荣誉证书、结业证书"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="col"><label>授予头衔 / 称号</label><input type="text" id="titleName" placeholder="如：委员、优秀学员、先进个人"></div>
+      <div class="col"><label>签发日期</label><input type="text" id="issueDate" placeholder="如：2026年4月"></div>
+      <div class="col"><label>有效期（可选）</label><input type="text" id="validPeriod" placeholder="如：2026年4月 — 2027年4月"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="col">
+        <label>证书正文模板</label>
+        <textarea id="bodyTemplate" placeholder="用 {name} 代表姓名，{org} 代表机构，{title} 代表头衔，{committee} 代表二级机构，{date} 代表日期，{valid} 代表有效期，{num} 代表编号">兹授予 {name} 同志 {org}{committee}{title} 荣誉称号。</textarea>
+        <div class="hint">支持变量：{name} {org} {committee} {title} {date} {valid} {num}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Assets -->
+  <div class="panel">
+    <h2>② 资源上传</h2>
+    <div class="row">
+      <div class="col">
+        <label>机构 Logo（PNG/JPG，可选）</label>
+        <input type="file" id="logoInput" accept="image/png,image/jpeg">
+        <div class="hint">将显示在证书顶部居中</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Names -->
+  <div class="panel">
+    <h2>③ 输入名单</h2>
+    <div class="row">
+      <div class="col" style="flex:2">
+        <label>获奖人 / 受聘人姓名（每行一个）</label>
+        <textarea id="namesInput" placeholder="张三&#10;李四&#10;王五"></textarea>
+      </div>
+      <div class="col">
+        <label>导入 CSV</label>
+        <input type="file" id="csvInput" accept=".csv" style="margin-bottom:10px">
+        <label>编号前缀（可选）</label>
+        <input type="text" id="numPrefix" placeholder="如：CERT-2026-">
+        <label style="margin-top:8px">起始编号</label>
+        <input type="number" id="numStart" value="1" min="1">
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn-primary" onclick="loadNames()">加载名单</button>
+      <span id="nameCount" style="margin-left:12px;font-size:13px;color:#666"></span>
+    </div>
+  </div>
+
+  <!-- Step 4: Preview -->
+  <div class="panel">
+    <h2>④ 预览</h2>
+    <div style="margin-bottom:10px">
+      <label style="display:inline">预览第</label>
+      <select id="previewIndex" onchange="renderPreview()" style="width:auto;display:inline"></select>
+      <label style="display:inline">位</label>
+      <button class="btn-primary" onclick="switchView('cert')" style="margin-left:16px" id="btnCert">个人证书</button>
+      <button class="btn-primary" onclick="switchView('roster')" id="btnRoster" style="opacity:.5">名单公示</button>
+    </div>
+    <div id="previewArea" style="display:flex;justify-content:center"></div>
+  </div>
+
+  <!-- Step 5: Generate -->
+  <div class="panel">
+    <h2>⑤ 生成 PDF</h2>
+    <div class="actions">
+      <button class="btn-gold" id="genOneBtn" onclick="generateOneCert()" disabled>生成当前证书</button>
+      <button class="btn-success" id="genAllBtn" onclick="generateAllCerts()" disabled>批量生成全部</button>
+      <button class="btn-primary" id="genRosterBtn" onclick="generateRosterPDF()" disabled>生成名单公示</button>
+      <span id="progressText" style="font-size:13px;color:#666"></span>
+      <progress id="progressBar" value="0" max="100" style="width:180px;display:none"></progress>
+    </div>
+  </div>
+
+</div>
+<script>
+// === SHA-256 ===
+async function sha256Hex(str) {
+  if (window.crypto && window.crypto.subtle) {
+    try {
+      const buf = new TextEncoder().encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+    } catch(e) {}
+  }
+  return sha256Sync(str);
+}
+function sha256Sync(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  let r = '', s = h;
+  for (let i = 0; i < 8; i++) { s = Math.imul(s ^ (s>>>16), 0x45d9f3b); s = Math.imul(s ^ (s>>>13), 0x45d9f3b); s = s ^ (s>>>16); r += (s>>>0).toString(16).padStart(8,'0'); }
+  return r;
+}
+
+// === State ===
+let names = [], currentView = 'cert', logoDataURL = null;
+const PDFLib = window.PDFLib;
+
+// === Logo upload ===
+document.getElementById('logoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = function(ev) { logoDataURL = ev.target.result; renderPreview(); };
+  r.readAsDataURL(file);
+});
+
+// === CSV import ===
+document.getElementById('csvInput').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = function(ev) {
+    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
+    const start = (lines[0] && /姓名|name/i.test(lines[0])) ? 1 : 0;
+    const parsed = [];
+    for (let i = start; i < lines.length; i++) { const v = lines[i].split(',')[0].replace(/"/g,'').trim(); if (v) parsed.push(v); }
+    document.getElementById('namesInput').value = parsed.join('\n');
+  };
+  r.readAsText(file);
+});
+
+// === Names ===
+function loadNames() {
+  const text = document.getElementById('namesInput').value.trim();
+  if (!text) { alert('请输入姓名'); return; }
+  names = text.split(/\n/).map(s => s.trim()).filter(Boolean);
+  document.getElementById('nameCount').textContent = '已加载 ' + names.length + ' 人';
+  const sel = document.getElementById('previewIndex'); sel.innerHTML = '';
+  names.forEach((n,i) => { const o = document.createElement('option'); o.value = i; o.textContent = (i+1)+'. '+n; sel.appendChild(o); });
+  document.getElementById('genOneBtn').disabled = false;
+  document.getElementById('genAllBtn').disabled = false;
+  document.getElementById('genRosterBtn').disabled = false;
+  renderPreview();
+}
+
+function getNum(i) {
+  const p = document.getElementById('numPrefix').value;
+  const s = parseInt(document.getElementById('numStart').value) || 1;
+  return p ? p + String(s+i).padStart(3,'0') : String(s+i).padStart(3,'0');
+}
+
+function getVars(name, index) {
+  return {
+    name, num: getNum(index),
+    org: document.getElementById('orgName').value,
+    committee: document.getElementById('committeeName').value,
+    title: document.getElementById('titleName').value,
+    date: document.getElementById('issueDate').value,
+    valid: document.getElementById('validPeriod').value
+  };
+}
+
+function fillTemplate(tpl, vars) {
+  return tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] || '');
+}
+
+// === View switch ===
+function switchView(v) {
+  currentView = v;
+  document.getElementById('btnCert').style.opacity = v==='cert'?'1':'.5';
+  document.getElementById('btnRoster').style.opacity = v==='roster'?'1':'.5';
+  renderPreview();
+}
+
+// === Preview ===
+function renderPreview() {
+  const area = document.getElementById('previewArea');
+  if (!names.length) { area.innerHTML = '<div style="color:#999;padding:40px">请先加载名单</div>'; return; }
+  if (currentView === 'cert') {
+    const i = parseInt(document.getElementById('previewIndex').value) || 0;
+    area.innerHTML = buildCertHTML(names[i], i);
+  } else { area.innerHTML = buildRosterHTML(); }
+}
+
+function buildCertHTML(name, index) {
+  const v = getVars(name, index);
+  const tpl = document.getElementById('bodyTemplate').value;
+  const body = fillTemplate(tpl, v).replace(new RegExp(name,'g'), '<span class="cert-name-hl">'+name+'</span>');
+  const hash = sha256Sync(v.num+'|'+name+'|'+v.org+'|'+v.date);
+  const wm = v.org ? Array(60).fill('<span>'+v.org+'</span>').join(' ') : '';
+  const logo = logoDataURL ? '<img class="cert-logo" src="'+logoDataURL+'">' : '';
+  const validLine = v.valid ? '<br>有效期：'+v.valid : '';
+  return '<div class="cert-page"><div class="cert-inner">' +
+    (wm ? '<div class="cert-wm">'+wm+'</div>' : '') +
+    '<div class="cert-corner tl"></div><div class="cert-corner tr"></div><div class="cert-corner bl"></div><div class="cert-corner br"></div>' +
+    (v.num ? '<div class="cert-num">NO. '+v.num+'</div>' : '') +
+    logo +
+    (v.org ? '<div class="cert-org">'+v.org+'</div>' : '') +
+    (v.committee ? '<div class="cert-sub">'+v.committee+'</div>' : '') +
+    '<div class="cert-type">'+document.getElementById('certTitle').value+'</div>' +
+    '<div class="cert-body">'+body+validLine+'</div>' +
+    '<div class="cert-footer"><span>'+(v.date?'签发日期：'+v.date:'')+'</span><span>'+v.org+'</span></div>' +
+    '<div class="cert-hash">SHA-256: '+hash+'</div>' +
+    '</div></div>';
+}
+
+function buildRosterHTML() {
+  const v = getVars('',0);
+  const certTitle = document.getElementById('certTitle').value;
+  let grid = ''; names.forEach(n => { grid += '<div class="roster-item">'+n+'</div>'; });
+  return '<div class="roster-page"><div class="roster-inner">' +
+    (v.org ? '<div class="roster-title">'+v.org+'</div>' : '') +
+    '<div class="roster-sub">'+(v.committee||'')+' '+(v.title||'')+' 名单公示</div>' +
+    '<div class="roster-count">（共'+names.length+'人）</div>' +
+    '<div class="roster-grid">'+grid+'</div>' +
+    '<div class="roster-footer">'+v.org+(v.date?'<br>签发日期：'+v.date:'')+'</div>' +
+    '</div></div>';
+}
+
+// Re-render on any config change
+['orgName','committeeName','certTitle','titleName','issueDate','validPeriod','numPrefix','numStart','bodyTemplate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderPreview);
+});
+
+// === PDF: html2canvas screenshot approach (WYSIWYG) ===
+async function htmlToPdfBytes(htmlStr, landscape) {
+  // Create offscreen container
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
+  wrap.innerHTML = htmlStr;
+  document.body.appendChild(wrap);
+  const el = wrap.firstElementChild;
+
+  // Wait for images to load
+  const imgs = el.querySelectorAll('img');
+  await Promise.all(Array.from(imgs).map(img => img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })));
+
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+  document.body.removeChild(wrap);
+
+  const imgData = canvas.toDataURL('image/png');
+  const imgBytes = Uint8Array.from(atob(imgData.split(',')[1]), c => c.charCodeAt(0));
+
+  const doc = await PDFLib.PDFDocument.create();
+  const img = await doc.embedPng(imgBytes);
+  const W = landscape ? 842 : 595;
+  const H = landscape ? 595 : 842;
+  const scale = Math.min(W / img.width, H / img.height);
+  const page = doc.addPage([W, H]);
+  const iw = img.width * scale, ih = img.height * scale;
+  page.drawImage(img, { x: (W - iw) / 2, y: (H - ih) / 2, width: iw, height: ih });
+
+  return await doc.save();
+}
+
+function downloadPDF(bytes, name) {
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function generateOneCert() {
+  const i = parseInt(document.getElementById('previewIndex').value) || 0;
+  const html = buildCertHTML(names[i], i);
+  const bytes = await htmlToPdfBytes(html, true);
+  downloadPDF(bytes, names[i] + '_证书.pdf');
+}
+
+async function generateAllCerts() {
+  const btn = document.getElementById('genAllBtn');
+  const bar = document.getElementById('progressBar');
+  const txt = document.getElementById('progressText');
+  btn.disabled = true; bar.style.display = 'inline-block'; bar.value = 0;
+  for (let i = 0; i < names.length; i++) {
+    const html = buildCertHTML(names[i], i);
+    const bytes = await htmlToPdfBytes(html, true);
+    downloadPDF(bytes, names[i] + '_证书.pdf');
+    bar.value = Math.round((i + 1) / names.length * 100);
+    txt.textContent = (i + 1) + ' / ' + names.length;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  txt.textContent = '全部完成！共 ' + names.length + ' 份';
+  btn.disabled = false;
+}
+
+async function generateRosterPDF() {
+  const html = buildRosterHTML();
+  const bytes = await htmlToPdfBytes(html, true);
+  downloadPDF(bytes, '名单公示.pdf');
+}
+</script>
+</body>
+</html>
